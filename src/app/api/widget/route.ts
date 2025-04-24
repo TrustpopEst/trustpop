@@ -6,14 +6,19 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url)
+  const userId = searchParams.get('user')
 
-    console.log('SUPABASE URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('SUPABASE KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  if (!userId) {
+    return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .eq('is_active', true) // 👈 only fetch active events
+    .eq('user_id', userId)
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(5)
 
