@@ -25,18 +25,20 @@ export default function EventsPage() {
       if (!session) {
         router.push('/auth/login')
       } else {
-        setUserId(session.user.id)
-        fetchEvents()
+        const uid = session.user.id
+        setUserId(uid)
+        fetchEvents(uid)
       }
     }
 
     checkSession()
   }, [])
 
-  async function fetchEvents() {
+  async function fetchEvents(uid: string) {
     const { data, error } = await supabase
       .from('events')
       .select('*')
+      .eq('user_id', uid)
       .order('created_at', { ascending: false })
 
     if (error) console.error('Error loading events:', error)
@@ -45,27 +47,35 @@ export default function EventsPage() {
 
   async function addEvent(e: React.FormEvent) {
     e.preventDefault()
-    if (!message) return
+    if (!message || !userId) return
 
-    const { error } = await supabase.from('events').insert([{ message, source }])
-    if (error) return console.error('Error adding event:', error)
+    const { error } = await supabase.from('events').insert([
+      {
+        message,
+        source,
+        user_id: userId,
+        is_active: true,
+      },
+    ])
 
-    setMessage('')
-    setSource('')
-    fetchEvents()
-  }
-
-  async function handleDelete(id: number) {
-    const confirmDelete = confirm('Are you sure you want to delete this event?')
-    if (!confirmDelete) return
-
-    const { error } = await supabase.from('events').delete().eq('id', id)
     if (error) {
-      console.error('Error deleting event:', error)
+      console.error('Error adding event:', error)
       return
     }
 
-    fetchEvents()
+    setMessage('')
+    setSource('')
+    fetchEvents(userId)
+  }
+
+  async function handleDelete(id: number) {
+    const confirmDelete = confirm('Delete this event?')
+    if (!confirmDelete || !userId) return
+
+    const { error } = await supabase.from('events').delete().eq('id', id)
+
+    if (error) console.error('Error deleting event:', error)
+    else fetchEvents(userId)
   }
 
   async function handleLogout() {
@@ -114,7 +124,7 @@ export default function EventsPage() {
             <button
               onClick={() => handleDelete(event.id)}
               className="absolute top-1 right-1 text-xs text-red-500 hover:text-red-700"
-              title="Delete event"
+              title="Delete"
             >
               ✖
             </button>
@@ -137,7 +147,7 @@ export default function EventsPage() {
               id="embed-code"
               className="block bg-white p-2 rounded border overflow-x-auto pr-12"
             >
-              {`<script src="http://localhost:3000/widget.js?user=${userId}" defer></script>`}
+              {`<script src="https://trustpop.vercel.app/widget.js?user=${userId}" defer></script>`}
             </code>
             <button
               onClick={() => {
