@@ -3,6 +3,7 @@ console.log('TrustPop Widget: loading...')
 // Grab ?user=xxx from URL
 const urlParams = new URLSearchParams(window.location.search)
 const userId = urlParams.get('user')
+console.log('User ID:', userId); // Make sure this prints the correct user ID from the URL
 
 if (!userId) {
   console.error('❌ No user ID in widget script URL')
@@ -10,9 +11,13 @@ if (!userId) {
   ;(async function () {
     try {
       const res = await fetch(`/api/widget?user=${userId}`)
+      console.log('Fetching data from API with user:', userId) // Check if userId is being passed correctly
       const json = await res.json()
       const { events } = json
-      if (!events || events.length === 0) return
+      if (!events || events.length === 0) {
+        console.error('❌ No events to display');
+        return;
+      }
 
       const container = document.createElement('div')
       container.style.position = 'fixed'
