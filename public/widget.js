@@ -1,68 +1,89 @@
-console.log('TrustPop Widget: loading...')
+// public/widget.js
+console.log('TrustPop Widget: loading...');
 
-// Grab ?user=xxx from URL
-const urlParams = new URLSearchParams(window.location.search)
-const userId = urlParams.get('user')
-console.log('User ID:', userId); // Make sure this prints the correct user ID from the URL
+// Find this current <script> tag to extract the `user` query param
+const currentScript = document.currentScript || (function() {
+  const scripts = document.getElementsByTagName('script');
+  return scripts[scripts.length - 1];
+})();
+const scriptSrc = currentScript && currentScript.src;
+
+console.log('Script src:', scriptSrc);
+
+// Parse out the user ID from the script URL
+let userId = null;
+if (scriptSrc) {
+  try {
+    const url = new URL(scriptSrc);
+    userId = url.searchParams.get('user');
+  } catch (err) {
+    console.error('❌ Invalid widget script URL:', err);
+  }
+}
+console.log('User ID from script:', userId);
 
 if (!userId) {
-  console.error('❌ No user ID in widget script URL')
+  console.error('❌ No user ID in widget script URL');
 } else {
-  ;(async function () {
+  ;(async () => {
+    console.log(`⏳ Fetching data from API with user: ${userId}`);
     try {
-      const res = await fetch(`/api/widget?user=${userId}`)
-      console.log('Fetching data from API with user:', userId) // Check if userId is being passed correctly
-      const json = await res.json()
-      const { events } = json
+      const res = await fetch(`/api/widget?user=${encodeURIComponent(userId)}`);
+      const json = await res.json();
+      console.log('✅ API response:', json);
+      const { events } = json;
       if (!events || events.length === 0) {
-        console.error('❌ No events to display');
+        console.log('❌ No events to display');
         return;
       }
 
-      const container = document.createElement('div')
-      container.style.position = 'fixed'
-      container.style.bottom = '20px'
-      container.style.left = '20px'
-      container.style.background = '#fff'
-      container.style.border = '1px solid #ccc'
-      container.style.borderRadius = '10px'
-      container.style.padding = '12px 16px'
-      container.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'
-      container.style.fontFamily = 'sans-serif'
-      container.style.fontSize = '14px'
-      container.style.color = '#333'
-      container.style.zIndex = '9999'
-      container.style.transition = 'all 0.5s ease'
-      container.style.opacity = '0'
-      container.style.transform = 'translateY(20px)'
+      // Create and style the pop-up container
+      const container = document.createElement('div');
+      Object.assign(container.style, {
+        position: 'fixed',
+        bottom: '20px',
+        left: '20px',
+        background: '#fff',
+        border: '1px solid #ccc',
+        borderRadius: '10px',
+        padding: '12px 16px',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        color: '#333',
+        zIndex: '9999',
+        transition: 'all 0.5s ease',
+        opacity: '0',
+        transform: 'translateY(20px)',
+      });
+      document.body.appendChild(container);
 
-      document.body.appendChild(container)
-
-      let index = 0
+      let index = 0;
       function showNext() {
-        const event = events[index]
-        if (!event) return
+        const ev = events[index];
+        if (!ev) return;
 
-        container.style.opacity = '0'
-        container.style.transform = 'translateY(20px)'
+        // hide
+        container.style.opacity = '0';
+        container.style.transform = 'translateY(20px)';
 
         setTimeout(() => {
-          container.innerText = `${event.message} • ${new Date(event.created_at).toLocaleTimeString()}`
-          container.style.opacity = '1'
-          container.style.transform = 'translateY(0)'
-        }, 300)
+          container.textContent = `${ev.message} • ${new Date(ev.created_at).toLocaleTimeString()}`;
+          container.style.opacity = '1';
+          container.style.transform = 'translateY(0)';
+        }, 300);
 
-        index = (index + 1) % events.length
+        index = (index + 1) % events.length;
       }
 
-      showNext()
-      const interval = setInterval(showNext, 5000)
+      showNext();
+      const interval = setInterval(showNext, 5000);
       setTimeout(() => {
-        clearInterval(interval)
-        container.remove()
-      }, 30000)
+        clearInterval(interval);
+        container.remove();
+      }, 30000);
     } catch (err) {
-      console.error('❌ TrustPop widget error:', err)
+      console.error('❌ TrustPop widget error:', err);
     }
-  })()
+  })();
 }

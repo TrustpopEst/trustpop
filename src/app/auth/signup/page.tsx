@@ -1,35 +1,53 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function SignupPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const [confirm, setConfirm] = useState('')
+  const [error, setError] = useState<string| null>(null)
+  const [loading, setLoading] = useState(false)
 
-  async function handleSignup(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setError(null)
 
-    const { error } = await supabase.auth.signUp({
+    // 1) Check passwords match
+    if (password !== confirm) {
+      setError("Passwords don't match")
+      return
+    }
+
+    setLoading(true)
+    const { data, error: supaError } = await supabase.auth.signUp({
       email,
       password,
     })
+    setLoading(false)
 
-    if (error) setError(error.message)
-    else router.push('/events')
+    if (supaError) {
+      setError(supaError.message)
+      return
+    }
+
+    // on success, supabase will send confirmation email (unless you disabled it)
+    // we’ll redirect to the events page—new users will see an empty list
+    router.push('/events')
   }
 
   return (
-    <main className="max-w-md mx-auto p-6">
-      <h1 className="text-xl font-bold mb-4">Create Your TrustPop Account</h1>
-      <form onSubmit={handleSignup} className="space-y-4">
+    <main className="p-6 max-w-md mx-auto space-y-4">
+      <h1 className="text-2xl font-bold">🔐 Create an account</h1>
+      <form onSubmit={handleSubmit} className="space-y-3">
         <input
           type="email"
           placeholder="Email"
+          required
           className="w-full p-2 border rounded"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -37,18 +55,34 @@ export default function SignupPage() {
         <input
           type="password"
           placeholder="Password"
+          required
           className="w-full p-2 border rounded"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <p className="text-red-500">{error}</p>}
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          required
+          className="w-full p-2 border rounded"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+        />
+        {error && <div className="text-red-600">{error}</div>}
         <button
           type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
         >
-          Sign Up
+          {loading ? 'Creating…' : 'Sign Up'}
         </button>
       </form>
+      <p className="text-sm text-gray-600">
+        Already have an account?{' '}
+        <Link href="/auth/login" className="text-blue-600 hover:underline">
+          Log in
+        </Link>
+      </p>
     </main>
   )
 }
