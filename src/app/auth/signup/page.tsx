@@ -10,7 +10,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState<string| null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,7 +24,8 @@ export default function SignupPage() {
     }
 
     setLoading(true)
-    const { data, error: supaError } = await supabase.auth.signUp({
+    // Removed `data` since it was never used
+    const { error: supaError } = await supabase.auth.signUp({
       email,
       password,
     })
