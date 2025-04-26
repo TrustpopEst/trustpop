@@ -12,33 +12,39 @@ type Event = {
 }
 
 export default function EventsPage() {
+  const router = useRouter()
   const [events, setEvents] = useState<Event[]>([])
   const [message, setMessage] = useState('')
   const [source, setSource] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
+    // run once on mount (and if router ever changes)
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
 
       if (!session) {
+        // not logged in → force login page
         router.push('/auth/login')
-      } else {
-        const uid = session.user.id
-        setUserId(uid)
-        fetchEvents(uid)
+        return
       }
+
+      // logged in → grab UID and fetch that user’s events
+      const uid = session.user.id
+      setUserId(uid)
+      fetchEvents(uid)
     }
 
     checkSession()
-  }, [])
+  }, [router])
 
   async function fetchEvents(uid: string) {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .eq('user_id', uid)
+      .eq('user_id', uid)               // ← very important filter
       .order('created_at', { ascending: false })
 
     if (error) console.error('Error loading events:', error)
@@ -53,7 +59,7 @@ export default function EventsPage() {
       {
         message,
         source,
-        user_id: userId,
+        user_id: userId,               // tag the new row with this user
         is_active: true,
       },
     ])
@@ -69,11 +75,10 @@ export default function EventsPage() {
   }
 
   async function handleDelete(id: number) {
-    const confirmDelete = confirm('Delete this event?')
-    if (!confirmDelete || !userId) return
+    if (!userId) return
+    if (!confirm('Delete this event?')) return
 
     const { error } = await supabase.from('events').delete().eq('id', id)
-
     if (error) console.error('Error deleting event:', error)
     else fetchEvents(userId)
   }
@@ -85,6 +90,7 @@ export default function EventsPage() {
 
   return (
     <main className="p-6 max-w-xl mx-auto">
+      {/* header + logout */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold">📋 My Events</h1>
         <button
@@ -95,6 +101,7 @@ export default function EventsPage() {
         </button>
       </div>
 
+      {/* add-event form */}
       <form onSubmit={addEvent} className="mb-6 space-y-2">
         <input
           type="text"
@@ -118,27 +125,31 @@ export default function EventsPage() {
         </button>
       </form>
 
+      {/* list of events */}
       <ul className="space-y-2">
-        {events.map((event) => (
-          <li key={event.id} className="border p-3 rounded bg-gray-50 relative">
+        {events.map((ev) => (
+          <li key={ev.id} className="border p-3 rounded bg-gray-50 relative">
             <button
-              onClick={() => handleDelete(event.id)}
+              onClick={() => handleDelete(ev.id)}
               className="absolute top-1 right-1 text-xs text-red-500 hover:text-red-700"
               title="Delete"
             >
               ✖
             </button>
-            <div className="font-medium">{event.message}</div>
+            <div className="font-medium">{ev.message}</div>
             <div className="text-sm text-gray-500">
-              {new Date(event.created_at).toLocaleString()}
+              {new Date(ev.created_at).toLocaleString()}
             </div>
-            {event.source && (
-              <div className="text-xs italic text-gray-400">Source: {event.source}</div>
+            {ev.source && (
+              <div className="text-xs italic text-gray-400">
+                Source: {ev.source}
+              </div>
             )}
           </li>
         ))}
       </ul>
 
+      {/* embed script snippet */}
       {userId && (
         <div className="mt-8 p-4 bg-gray-100 rounded border text-sm text-gray-700">
           <p className="font-medium mb-2">Your Embed Script:</p>
